@@ -5,23 +5,39 @@ from generador_pdf import generar_orden_trabajo, generar_orden_compra
 import tkinter as tk
 
 # Función principal
-def on_submit(entries, datos_empresa, tipo_documento, servicios):
+def on_submit(entries, datos_empresa, tipo_documento, servicios, item_frames, nombre_proveedor):
     try:
-        # Validar campos obligatorios
         validar_datos_obligatorios(entries, [
-            'Correo Electrónico', 'Fecha de Emisión', 'Departamento Solicitante',
-            'Responsable de la Orden', 'Descripción del Trabajo',
-            'Fecha de Inicio', 'Fecha Estimada de Finalización'
+            'Número de Orden',
+            'Correo Electrónico',
+            'Fecha de Emisión',
+            'Responsable de la Orden',
+            'Fecha de Inicio',
+            'Fecha Estimada de Finalización',
+            'Proveedor'
         ])
         
+        # Validar que los valores de ítems sean numéricos
+        for frame in item_frames:
+            if isinstance(frame, dict):
+                valor_entry = frame.get('valor')
+            elif isinstance(frame, tuple) and len(frame) > 1:
+                valor_entry = frame[1]
+            else:
+                valor_entry = None
+
+            if valor_entry and hasattr(valor_entry, "get"):
+                valor = valor_entry.get().strip()
+                if valor and not valor.replace('.', '', 1).isdigit():
+                    raise ValueError(f"El valor '{valor}' no es numérico.")
+
         # Validar campos numéricos
-        validar_datos_numericos(entries, ['Valor 1', 'Valor 2', 'Valor 3', 'Valor 4', 'Valor 5', 'Total Estimado'])
         
         # Validar campos de fechas
         validar_datos_fechas(entries, ['Fecha de Emisión', 'Fecha de Inicio', 'Fecha Estimada de Finalización'])
 
         # Obtener y estructurar los datos
-        datos = obtener_datos_formulario(entries)
+        datos = obtener_datos_formulario(entries, item_frames)
         datos['empresa'] = datos_empresa  # Añadir datos fijos de la empresa
 
         # Generar PDF según tipo_documento
@@ -32,7 +48,7 @@ def on_submit(entries, datos_empresa, tipo_documento, servicios):
             datos_oc = {
                 "numero_orden": entries['Número de Orden'].get(),
                 "fecha_emision": entries['Fecha de Emisión'].get(),
-                "proveedor": entries['Responsable de la Orden'].get(),  # Asumido como proveedor
+                "proveedor": nombre_proveedor,
                 "detalles_servicios": servicios,
                 "total_usd": f"{total_usd:.2f}",
                 "condiciones": [
@@ -42,6 +58,16 @@ def on_submit(entries, datos_empresa, tipo_documento, servicios):
             }
             ruta_pdf = generar_orden_compra(datos_oc)
         else:
+            total_valores = 0.0
+            for frame in item_frames:
+                valor_entry = frame[1] if isinstance(frame, tuple) else frame.get('valor')
+                if hasattr(valor_entry, "get"):
+                    valor = valor_entry.get().strip()
+                else:
+                    valor = valor_entry.strip()
+                if valor:
+                    total_valores += float(valor)
+            datos['total'] = f"{total_valores:.2f}"
             ruta_pdf = generar_orden_trabajo(datos)
         messagebox.showinfo("Éxito", f"Archivo PDF generado en: {ruta_pdf}")
 
@@ -114,44 +140,51 @@ def obtener_datos_empresa_fijos():
     }
 
 # Recopilación de datos
-def obtener_datos_formulario(entries):
+def obtener_datos_formulario(entries, item_frames):
     """
     Recopila y estructura los datos ingresados en el formulario.
     Args:
         entries (dict): Diccionario con los campos del formulario y sus valores.
+        item_frames (list): Lista de widgets dinámicos de ítems agregados.
     Returns:
         dict: Datos estructurados listos para ser procesados.
     """
     try:
-        # Costos estimados dinámicos
+        # Costos estimados dinámicos desde item_frames
         costos_estimados = [
             ["Concepto", "Cantidad", "Precio/Unidad", "Valor Total"]
         ]
-        for i in range(1, 6):  # Concepto 1 a Concepto 5
-            concepto = entries[f"Concepto {i}"].get()
-            valor = entries[f"Valor {i}"].get()
-            if concepto or valor:  # Solo añadir si hay datos
+        for frame in item_frames:
+            concepto = valor = ""
+
+            if isinstance(frame, dict):
+                concepto_widget = frame.get('concepto')
+                valor_widget = frame.get('valor')
+                concepto = concepto_widget.get().strip() if hasattr(concepto_widget, "get") else str(concepto_widget).strip()
+                valor = valor_widget.get().strip() if hasattr(valor_widget, "get") else str(valor_widget).strip()
+
+            elif isinstance(frame, tuple):
+                concepto_widget = frame[0]
+                valor_widget = frame[1]
+                concepto = concepto_widget.get().strip() if hasattr(concepto_widget, "get") else str(concepto_widget).strip()
+                valor = valor_widget.get().strip() if hasattr(valor_widget, "get") else str(valor_widget).strip()
+
+            if concepto or valor:
                 costos_estimados.append([concepto, "", "", valor])
 
-        # Añadir el total estimado
-        costos_estimados.append(["Total Estimado", "", "", entries["Total Estimado"].get()])
+        # costos_estimados.append(["Total Estimado", "", "", entries["Total Estimado"].get()])
 
-        # Estructura final de datos
         datos = {
-            "empresa": {},  # Esto se completa en on_submit
+            "empresa": {},  # Se completa en on_submit
             "numero_orden": entries['Número de Orden'].get(),
             "fecha_emision": entries['Fecha de Emisión'].get(),
-            "departamento_solicitante": entries['Departamento Solicitante'].get(),
             "responsable_orden": entries['Responsable de la Orden'].get(),
-            "descripcion_trabajo": [entries['Descripción del Trabajo'].get()],
+            "descripcion_trabajo": entries.get('Descripción del Trabajo', tk.Entry()).get().strip(),
             "fechas_importantes": {
                 "Fecha de Inicio": entries['Fecha de Inicio'].get(),
                 "Fecha Estimada de Finalización": entries['Fecha Estimada de Finalización'].get()
             },
-            "costos_estimados": costos_estimados,
-            "aprobaciones": {
-                "Comentarios y otros": entries['Comentarios'].get()
-            }
+            "costos_estimados": costos_estimados
         }
         return datos
     except KeyError as e:
@@ -164,3 +197,28 @@ def obtener_datos_formulario(entries):
 
 
 
+
+
+# Buscar proveedor por ID en archivo CSV
+import csv
+
+def obtener_proveedor_por_id(id_proveedor, archivo='data/datos_proveedores.csv'):
+    """
+    Busca el nombre del proveedor a partir de un ID en un archivo CSV.
+
+    Args:
+        id_proveedor (str): ID del proveedor a buscar.
+        archivo (str): Ruta al archivo CSV de proveedores.
+
+    Returns:
+        str or None: Nombre del proveedor si se encuentra, o None si no se encuentra.
+    """
+    if not os.path.exists(archivo):
+        return None
+
+    with open(archivo, newline='', encoding='utf-8') as csvfile:
+        lector = csv.DictReader(csvfile)
+        for fila in lector:
+            if fila.get('ID') == id_proveedor:
+                return fila.get('Nombre')
+    return None

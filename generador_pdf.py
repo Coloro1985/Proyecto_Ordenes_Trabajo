@@ -28,14 +28,19 @@ def generar_orden_trabajo(datos):
     c.setFont("Helvetica", 10)
     c.drawString(40, 630, f"Número de Orden: {datos['numero_orden']}")
     c.drawString(40, 615, f"Fecha de Emisión: {datos['fecha_emision']}")
-    c.drawString(40, 600, f"Departamento Solicitante: {datos['departamento_solicitante']}")
-    c.drawString(40, 585, f"Responsable: {datos['responsable_orden']}")
+    # c.drawString(40, 600, f"Departamento Solicitante: {datos['departamento_solicitante']}")
+    c.drawString(40, 585, f"Responsable de la Orden: {datos['responsable_orden']}")
 
     # Descripción del trabajo
     c.setFont("Helvetica-Bold", 10)
     c.drawString(40, 560, "Descripción del Trabajo:")
     c.setFont("Helvetica", 10)
-    c.drawString(40, 545, datos['descripcion_trabajo'][0])
+    y_pos = 545
+    for linea in datos['descripcion_trabajo']:
+        c.drawString(40, y_pos, linea)
+        y_pos -= 15
+
+    y_pos = 540 - (len(datos['descripcion_trabajo']) * 15)
 
     # Costos estimados
     c.setFont("Helvetica-Bold", 10)
@@ -81,7 +86,7 @@ def generar_orden_compra(datos):
     c.drawString(40, 750, f"Orden de Compra Nº: {datos['numero_orden']}")
     c.setFont("Helvetica", 10)
     c.drawString(40, 730, f"Fecha: {datos['fecha_emision']}")
-    c.drawString(40, 715, f"Proveedor: {datos['proveedor']}")
+    c.drawString(40, 715, f"Proveedor: {datos['proveedor']['nombre']} (ID: {datos['proveedor']['id']})")
 
     # Tabla de detalles
     c.setFont("Helvetica-Bold", 12)
@@ -93,12 +98,32 @@ def generar_orden_compra(datos):
     c.drawString(40, y_pos, "Descripción")
     c.drawString(400, y_pos, "Valor (USD)")
 
+    margen_inferior = 100  # Límite para evitar escribir fuera de la página
+
     # Filas con datos
     c.setFont("Helvetica", 10)
     for servicio in datos['detalles_servicios']:
-        y_pos -= 20
-        c.drawString(40, y_pos, servicio['descripcion'])
-        c.drawString(400, y_pos, f"{servicio['valor_usd']} USD")
+        for linea in servicio['descripcion'].split('\n'):
+            if y_pos < margen_inferior:
+                c.showPage()
+                y_pos = 750
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(40, y_pos, "Descripción")
+                c.drawString(400, y_pos, "Valor (USD)")
+                y_pos -= 20
+                c.setFont("Helvetica", 10)
+            c.drawString(40, y_pos, linea)
+            y_pos -= 15
+        if y_pos < margen_inferior:
+            c.showPage()
+            y_pos = 750
+            c.setFont("Helvetica-Bold", 10)
+            c.drawString(40, y_pos, "Descripción")
+            c.drawString(400, y_pos, "Valor (USD)")
+            y_pos -= 20
+            c.setFont("Helvetica", 10)
+        c.drawString(400, y_pos + 15, f"{servicio['valor_usd']} USD")
+        y_pos -= 5
 
     # Total general
     y_pos -= 30
@@ -113,6 +138,10 @@ def generar_orden_compra(datos):
     c.setFont("Helvetica", 10)
     condiciones = datos['condiciones']
     for condicion in condiciones:
+        if y_pos < margen_inferior:
+            c.showPage()
+            y_pos = 750
+            c.setFont("Helvetica", 10)
         y_pos -= 15
         c.drawString(40, y_pos, f"- {condicion}")
 
@@ -123,4 +152,3 @@ def generar_orden_compra(datos):
     # Guardar PDF
     c.save()
     return os.path.abspath(ruta_pdf)
-
