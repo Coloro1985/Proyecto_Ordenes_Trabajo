@@ -23,6 +23,10 @@ def iniciar_interfaz():
     # Configurar estilos personalizados
     configurar_estilos()
 
+    # Estilo especial para campo activo
+    style = ttk.Style()
+    style.configure("CampoActivo.TEntry", foreground="black", background="#e0f7fa", borderwidth=2)
+
     # Frame para la información de la empresa (fija)
     frame_empresa = ttk.LabelFrame(root, text="Información de la Empresa")
     frame_empresa.pack(fill="x", padx=10, pady=5)
@@ -34,6 +38,27 @@ def iniciar_interfaz():
         label_campo.pack(side="left", padx=5, pady=2)
         label_valor.pack(side="left", padx=5, pady=2)
         frame.pack(fill="x")
+
+    # Frame para la información del mandante
+    frame_mandante = ttk.LabelFrame(root, text="Información del Mandante")
+    frame_mandante.pack(fill="x", padx=10, pady=5)
+
+    campos_mandante = ['Nombre', 'Dirección', 'Correo', 'Teléfono']
+    entries_mandante = {}
+
+    for campo in campos_mandante:
+        frame = ttk.Frame(frame_mandante)
+        label = ttk.Label(frame, text=f"{campo}:")
+        entry = ttk.Entry(frame, width=40)
+        label.pack(side="left", padx=5, pady=2)
+        entry.pack(side="left", fill="x", expand=True)
+        frame.pack(fill="x", padx=5, pady=2)
+        entries_mandante[campo] = entry
+
+    # Inicializa el diccionario general de entries antes de usarlo
+    entries = {}
+    # Agrega al diccionario general de entries
+    entries.update({f"Mandante_{k}": v for k, v in entries_mandante.items()})
 
     # Cargar y mostrar el logo de la empresa
     ruta_logo = Path(__file__).parent / 'assets' / 'NuevoLogoGareste.png'
@@ -114,6 +139,15 @@ def iniciar_interfaz():
     # Guardar este entry en entries para poder usarlo en on_submit
     entries["Proveedor"] = entry_id_proveedor
 
+    # Campo de descripción del trabajo
+    frame_descripcion = ttk.LabelFrame(root, text="Descripción del Trabajo")
+    frame_descripcion.pack(fill="both", padx=10, pady=5)
+
+    descripcion_text = tk.Text(frame_descripcion, height=5, wrap="word")
+    descripcion_text.pack(fill="both", padx=5, pady=5)
+
+    entries["descripcion_trabajo"] = descripcion_text
+
     # Sección para agregar dinámicamente conceptos y valores
     frame_items = ttk.LabelFrame(root, text="Ítems de la Orden")
     frame_items.pack(fill='x', padx=10, pady=5)
@@ -123,11 +157,37 @@ def iniciar_interfaz():
     def agregar_item():
         sub_frame = ttk.Frame(frame_items)
         concepto_entry = ttk.Entry(sub_frame)
-        valor_entry = ttk.Entry(sub_frame, validate="key", validatecommand=(validar_numero_cmd, '%P'))
+        
+        def limpiar_y_normalizar_valor(P):
+            if P == "":
+                return True
+            try:
+                # Reemplaza comas por puntos y remueve puntos de miles
+                limpio = P.replace(".", "").replace(",", ".")
+                float(limpio)
+                return True
+            except ValueError:
+                return False
+
+        normalizar_cmd = root.register(limpiar_y_normalizar_valor)
+
+        valor_entry = ttk.Entry(sub_frame, validate="key", validatecommand=(normalizar_cmd, '%P'))
+
+        # Binding para iluminar el borde del campo valor_entry mientras está enfocado
+        def on_focus_in(event):
+            event.widget.configure(style="CampoActivo.TEntry")
+
+        def on_focus_out(event):
+            event.widget.configure(style="TEntry")
+
+        valor_entry.bind("<FocusIn>", on_focus_in)
+        valor_entry.bind("<FocusOut>", on_focus_out)
+
         ttk.Label(sub_frame, text="Concepto:").pack(side="left", padx=5)
         concepto_entry.pack(side="left", fill="x", expand=True, padx=5)
         ttk.Label(sub_frame, text="Valor:").pack(side="left", padx=5)
         valor_entry.pack(side="left", fill="x", padx=5)
+
         sub_frame.pack(fill="x", pady=2)
         item_frames.append((concepto_entry, valor_entry))
 
@@ -203,6 +263,9 @@ def iniciar_interfaz():
 
     # Botón para generar el PDF
     from utilidades import obtener_proveedor_por_id
+
+    entries["descripcion_trabajo"] = descripcion_text.get("1.0", "end-1c")
+
     boton_generar = ttk.Button(
         root, 
         text="Generar PDF", 

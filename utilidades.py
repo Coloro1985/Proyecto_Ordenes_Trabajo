@@ -28,8 +28,10 @@ def on_submit(entries, datos_empresa, tipo_documento, servicios, item_frames, no
 
             if valor_entry and hasattr(valor_entry, "get"):
                 valor = valor_entry.get().strip()
-                if valor and not valor.replace('.', '', 1).isdigit():
-                    raise ValueError(f"El valor '{valor}' no es numérico.")
+                if valor:
+                    valor_normalizado = valor.replace(".", "").replace(",", ".")
+                    if not valor_normalizado.replace('.', '', 1).isdigit():
+                        raise ValueError(f"El valor '{valor}' no es numérico.")
 
         # Validar campos numéricos
         
@@ -38,6 +40,8 @@ def on_submit(entries, datos_empresa, tipo_documento, servicios, item_frames, no
 
         # Obtener y estructurar los datos
         datos = obtener_datos_formulario(entries, item_frames)
+        if datos is None:
+            return  # Detener la ejecución si falló la recolección de datos
         datos['empresa'] = datos_empresa  # Añadir datos fijos de la empresa
 
         # Generar PDF según tipo_documento
@@ -66,7 +70,8 @@ def on_submit(entries, datos_empresa, tipo_documento, servicios, item_frames, no
                 else:
                     valor = valor_entry.strip()
                 if valor:
-                    total_valores += float(valor)
+                    valor_normalizado = valor.replace(".", "").replace(",", ".")
+                    total_valores += float(valor_normalizado)
             datos['total'] = f"{total_valores:.2f}"
             ruta_pdf = generar_orden_trabajo(datos)
         messagebox.showinfo("Éxito", f"Archivo PDF generado en: {ruta_pdf}")
@@ -162,24 +167,29 @@ def obtener_datos_formulario(entries, item_frames):
                 valor_widget = frame.get('valor')
                 concepto = concepto_widget.get().strip() if hasattr(concepto_widget, "get") else str(concepto_widget).strip()
                 valor = valor_widget.get().strip() if hasattr(valor_widget, "get") else str(valor_widget).strip()
-
+                valor = valor.replace(".", "").replace(",", ".")
             elif isinstance(frame, tuple):
                 concepto_widget = frame[0]
                 valor_widget = frame[1]
                 concepto = concepto_widget.get().strip() if hasattr(concepto_widget, "get") else str(concepto_widget).strip()
                 valor = valor_widget.get().strip() if hasattr(valor_widget, "get") else str(valor_widget).strip()
+                valor = valor.replace(".", "").replace(",", ".")
 
             if concepto or valor:
                 costos_estimados.append([concepto, "", "", valor])
 
         # costos_estimados.append(["Total Estimado", "", "", entries["Total Estimado"].get()])
 
+        if 'Descripción del Trabajo' not in entries:
+            raise KeyError('Descripción del Trabajo')
+        descripcion = entries['Descripción del Trabajo'].get("1.0", tk.END).strip()
+
         datos = {
             "empresa": {},  # Se completa en on_submit
             "numero_orden": entries['Número de Orden'].get(),
             "fecha_emision": entries['Fecha de Emisión'].get(),
             "responsable_orden": entries['Responsable de la Orden'].get(),
-            "descripcion_trabajo": entries.get('Descripción del Trabajo', tk.Entry()).get().strip(),
+            "descripcion_trabajo": descripcion,
             "fechas_importantes": {
                 "Fecha de Inicio": entries['Fecha de Inicio'].get(),
                 "Fecha Estimada de Finalización": entries['Fecha Estimada de Finalización'].get()
@@ -202,7 +212,7 @@ def obtener_datos_formulario(entries, item_frames):
 # Buscar proveedor por ID en archivo CSV
 import csv
 
-def obtener_proveedor_por_id(id_proveedor, archivo='data/datos_proveedores.csv'):
+def obtener_proveedor_por_id(id_proveedor, archivo=os.path.join('data', 'datos_proveedores.csv')):
     """
     Busca el nombre del proveedor a partir de un ID en un archivo CSV.
 
