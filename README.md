@@ -20,16 +20,20 @@ Este proyecto es una herramienta interactiva creada en Python para **generar Ór
 ## 📂 Estructura del Proyecto
 
 ```
-ordenes-de-trabajo/
+ProyectoOT/
 ├── assets/                # Recursos estáticos (logo)
 ├── data/                  # Archivos de datos: proveedores, contador, etc.
+│   └── ordenes_trabajo/   # PDFs generados para cada orden
+├── documentos/            # Clases para generar distintos tipos de documento
 ├── estilos.py             # Configuración de estilos para los PDFs
 ├── generador_pdf.py       # Lógica para construir los documentos
 ├── interfaz_grafica.py    # GUI con Tkinter
 ├── main.py                # Punto de entrada del programa
-├── utilidades.py          # Funciones auxiliares
+├── registro_ordenes.py    # Registro automático de órdenes
 ├── requirements.txt       # Dependencias del proyecto
-├── README.md              # Este archivo :)
+├── utilidades.py          # Funciones auxiliares
+├── LICENSE                # Licencia MIT
+└── README.md              # Este archivo :)
 ```
 
 ---
@@ -39,8 +43,8 @@ ordenes-de-trabajo/
 1. Clona el repositorio:
 
    ```bash
-   git clone https://github.com/TU_USUARIO/ordenes-de-trabajo.git
-   cd ordenes-de-trabajo
+   git clone https://github.com/TU_USUARIO/ProyectoOT.git
+   cd ProyectoOT
    ```
 
 2. Crea un entorno virtual y actívalo:
