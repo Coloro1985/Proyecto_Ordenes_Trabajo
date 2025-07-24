@@ -14,8 +14,6 @@ env/
 # Archivos temporales
 *.log
 *.bak
-
-# Archivos del sistema
 .DS_Store
 
 # Configuración de pyenv
