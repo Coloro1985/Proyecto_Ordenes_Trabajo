@@ -1,25 +1,29 @@
-# Python
+# === Python ===
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
 
-# PDFs generados
-*.pdf
+# === PDFs generados ===
+orden_de_trabajo.pdf
+data/ordenes_trabajo/
 
-# Entornos virtuales
+# === Entornos virtuales ===
 env/
 .venv/
 
-# Archivos temporales
+# === Archivos temporales ===
 *.log
 *.bak
 .DS_Store
 
-# Configuración de pyenv
+# === Configuración local de Python ===
 .python-version
 
-# Archivos de instalación y distribución
+# === Archivos de instalación/distribución ===
 *.egg-info/
 dist/
 build/
+
+# === Configuración de VSCode (opcional si usas distintas máquinas) ===
+.vscode/
