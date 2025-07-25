@@ -80,8 +80,9 @@ MAJOR.MINOR.PATCH (ejemplo: 1.0.2)
 - **MAJOR**: Cambios incompatibles con versiones anteriores. Ej: reestructuración completa.
 - **MINOR**: Nuevas funcionalidades compatibles. Ej: agregar un tipo de orden nuevo.
 - **PATCH**: Correcciones de errores menores o mejoras sin romper nada. Ej: solucionar un bug en el PDF.
+- Versión 1.1.1: Se consolida el proyecto en una sola raíz funcional. Se añade un módulo en desarrollo para la generación de facturas. Además, se actualiza el archivo README y el control de versiones semánticas.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)
 
 ---
 
