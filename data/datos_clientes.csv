@@ -1,3 +1,4 @@
 ID,Nombre,RUT,Dirección,Ciudad,Correo Electrónico,Teléfono,Contacto,Departamento
 1,Compañía Minera Atacama,76.123.456-7,Calle Minera 123,Copiapó,contacto@mineratacama.cl,+56912345678,Juan Pérez,Operaciones
-2,Servicios Industriales Norte,77.234.567-8,Avenida Industrial 456,Antofagasta,contacto@sinorte.cl,+56923456789,Ana Gómez,Logística
+2,Servicios Industriales Norte,77.234.567-8,Avenida Industrial 456,Antofagasta,contacto@sinorte.cl,+56923456789,Ana Gómez,Logística4,Pruebantino Corp
+1,Pruebantino Corp

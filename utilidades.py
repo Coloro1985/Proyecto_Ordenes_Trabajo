@@ -1,10 +1,12 @@
 import os
 from datetime import datetime
 from tkinter import messagebox
-from generador_pdf import generar_orden_trabajo, generar_orden_compra
+from generador_pdf import generar_documento
 import tkinter as tk
 import csv
+from logger_config import logger
 from registro_ordenes import registrar_orden
+
 
 # --- LÓGICA PRINCIPAL ---
 
@@ -18,7 +20,7 @@ def on_submit(entries, datos_empresa, tipo_documento, servicios, item_frames, pr
             'Responsable de la Orden',
             'Fecha de Inicio',
             'Fecha Estimada de Finalización',
-            'Proveedor',
+            'ID Proveedor', 
             'ID Cliente'
         ])
         
@@ -38,35 +40,36 @@ def on_submit(entries, datos_empresa, tipo_documento, servicios, item_frames, pr
                     if not valor_normalizado.replace('.', '', 1).isdigit():
                         raise ValueError(f"El valor '{valor}' no es numérico.")
 
-        # Validar campos numéricos
-        
         # Validar campos de fechas
         validar_datos_fechas(entries, ['Fecha de Emisión', 'Fecha de Inicio', 'Fecha Estimada de Finalización'])
 
         # Obtener y estructurar los datos
         datos = obtener_datos_formulario(entries, item_frames)
         if datos is None:
-            return  # Detener la ejecución si falló la recolección de datos
-        datos['empresa'] = datos_empresa  # Añadir datos fijos de la empresa
-
-        from generador_pdf import generar_documento
-
+            return
+        
+        datos['empresa'] = datos_empresa
         datos["tipo_documento"] = tipo_documento
-        datos["servicios"] = servicios
         datos["nombre_proveedor"] = proveedor
         datos["cliente"] = cliente
-        datos["descripcion_trabajo"] = descripcion_trabajo
+        datos["descripcion_trabajo"] = {"texto": descripcion_trabajo}
+        
+        # --- CORRECCIÓN: Calcular el total y añadirlo a los datos ---
+        total_calculado = sum(float(item.get('valor', 0.0)) for item in datos.get('servicios', []))
+        datos['total'] = f"{total_calculado:.2f}"
 
+        # Generar el documento PDF
         ruta_pdf = generar_documento(tipo_documento, datos)
 
+        # --- CORRECCIÓN: Llamada a registrar_orden con los argumentos correctos ---
         registrar_orden(
-            datos["numero_orden"],
-            datos["fecha_emision"],
-            datos.get("responsable_orden", proveedor),
-            datos["empresa"]["Nombre"],
-            descripcion_trabajo if descripcion_trabajo else datos.get("descripcion_trabajo", "Orden generada"),
-            datos.get("total", "0.00")
+            id_orden=datos["numero_orden"],
+            empresa=datos["empresa"]["Nombre"],
+            mandante=datos["cliente"],
+            descripcion=datos["descripcion_trabajo"]["texto"],
+            total_usd=datos["total"]
         )
+        
         messagebox.showinfo("Éxito", f"Archivo PDF generado en: {ruta_pdf}")
 
         # Actualizar número de orden
@@ -79,6 +82,10 @@ def on_submit(entries, datos_empresa, tipo_documento, servicios, item_frames, pr
 
     except ValueError as e:
         messagebox.showerror("Error", str(e))
+    except KeyError as e:
+        messagebox.showerror("Error de Datos", f"Falta el campo esencial: {e}")
+    except Exception as e:
+        messagebox.showerror("Error Inesperado", f"Ocurrió un error: {e}")
 
 
 # --- VALIDACIONES ---
@@ -155,28 +162,16 @@ def obtener_datos_formulario(entries, item_frames):
         dict: Datos estructurados listos para ser procesados.
     """
     try:
-        # Costos estimados dinámicos desde item_frames
-        costos_estimados = [
-            ["Concepto", "Cantidad", "Precio/Unidad", "Valor Total"]
-        ]
+        servicios = []
         for frame in item_frames:
-            concepto = valor = ""
-
             if isinstance(frame, dict):
                 concepto_widget = frame.get('concepto')
                 valor_widget = frame.get('valor')
-                concepto = concepto_widget.get().strip() if hasattr(concepto_widget, "get") else str(concepto_widget).strip()
+                nombre = concepto_widget.get().strip() if hasattr(concepto_widget, "get") else str(concepto_widget).strip()
                 valor = valor_widget.get().strip() if hasattr(valor_widget, "get") else str(valor_widget).strip()
                 valor = valor.replace(".", "").replace(",", ".")
-            elif isinstance(frame, tuple):
-                concepto_widget = frame[0]
-                valor_widget = frame[1]
-                concepto = concepto_widget.get().strip() if hasattr(concepto_widget, "get") else str(concepto_widget).strip()
-                valor = valor_widget.get().strip() if hasattr(valor_widget, "get") else str(valor_widget).strip()
-                valor = valor.replace(".", "").replace(",", ".")
-
-            if concepto or valor:
-                costos_estimados.append([concepto, "", "", valor])
+                if nombre or valor:
+                    servicios.append({"nombre": nombre, "valor": valor})
 
         # costos_estimados.append(["Total Estimado", "", "", entries["Total Estimado"].get()])
 
@@ -190,13 +185,13 @@ def obtener_datos_formulario(entries, item_frames):
             "id_cliente": entries['ID Cliente'].get(),
             "fecha_emision": entries['Fecha de Emisión'].get(),
             "responsable_orden": entries['Responsable de la Orden'].get(),
-            "descripcion_trabajo": descripcion,
+            "descripcion_trabajo": {"texto": descripcion},
             "fechas_importantes": {
                 "Fecha de Inicio": entries['Fecha de Inicio'].get(),
                 "Fecha Estimada de Finalización": entries['Fecha Estimada de Finalización'].get()
-            },
-            "costos_estimados": costos_estimados
+            }
         }
+        datos["servicios"] = servicios
         return datos
     except KeyError as e:
         messagebox.showerror("Error", f"Falta el campo: {e}")
@@ -271,3 +266,21 @@ def obtener_cliente_por_id(id_cliente, archivo=os.path.join('data', 'datos_clien
             if fila.get('ID') == id_cliente:
                 return fila.get('Nombre')
     return None
+
+def guardar_cliente(id_cliente, nombre_cliente, archivo=os.path.join('data', 'datos_clientes.csv')):
+    """
+    Guarda un nuevo cliente en el archivo CSV.
+    """
+    nuevo_cliente = {"ID": id_cliente, "Nombre": nombre_cliente}
+    
+    # Asegurarse de que el directorio data exista
+    os.makedirs(os.path.dirname(archivo), exist_ok=True)
+    archivo_existe = os.path.exists(archivo)
+
+    with open(archivo, 'a', newline='', encoding='utf-8') as csvfile:
+        campos = ["ID", "Nombre"]
+        writer = csv.DictWriter(csvfile, fieldnames=campos)
+
+        if not archivo_existe:
+            writer.writeheader()
+        writer.writerow(nuevo_cliente)
